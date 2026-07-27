@@ -1,87 +1,63 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
 
 # Configuración de la página
-st.set_page_config(page_title="Asistente IA", page_icon="🤖")
-st.title("🤖 Asistente Virtual Inteligente")
+st.set_page_config(page_title="Asistente de Atención al Cliente", page_icon="🤖")
+st.title("🤖 Asistente Virtual")
+st.write("¡Hola! Soy tu asistente de atención al cliente. ¿En qué puedo ayudarte hoy?")
 
-# 1. Configurar la API Key de Gemini
-# Usamos secretos de Streamlit o un campo en la interfaz si no está configurado
-api_key = st.secrets.get("GEMINI_API_KEY")
-
-if not api_key:
-    with st.sidebar:
-        st.subheader("Configuración")
-        api_key = st.text_input("Ingresa tu Gemini API Key:", type="password")
-
-if not api_key:
-    st.info("💡 Por favor, ingresa tu API Key de Gemini en la barra lateral para comenzar.")
-    st.stop()
-
-# Configurar el cliente de Gemini
-genai.configure(api_key=api_key)
-
-# Usamos la sintaxis directa actualizada
-try:
-    model = genai.GenerativeModel("gemini-1.5-flash")
-except Exception:
-    model = genai.GenerativeModel("gemini-1.5-pro")
-
-# 2. Cargar la base de datos CSV
+# 1. Cargar la base de datos CSV
 @st.cache_data
 def cargar_datos():
     try:
-        # Probamos leerlo ignorando líneas mal formadas o usando sep=None para detectar el separador
         df = pd.read_csv("datos/informacion.csv", on_bad_lines='skip', engine='python')
-        return df.to_string()
+        return df
     except Exception as e:
         st.error(f"Error al cargar el archivo de datos: {e}")
-        return ""
+        return None
 
-contexto_csv = cargar_datos()
+df_datos = cargar_datos()
+
+# 2. Función de búsqueda simple por palabras clave
+def buscar_respuesta(pregunta_usuario, df):
+    if df is None or df.empty:
+        return "Lo siento, la base de conocimientos no está disponible en este momento."
+    
+    pregunta_clean = pregunta_usuario.lower().strip()
+    
+    # Recorremos cada fila del CSV buscando coincidencias
+    for idx, row in df.iterrows():
+        # Convertimos la fila completa a texto para buscar palabras clave
+        texto_fila = " ".join(row.astype(str)).lower()
+        
+        # Buscamos palabras de la pregunta dentro de los datos
+        palabras_clave = [p for p in pregunta_clean.split() if len(p) > 3]
+        for palabra in palabras_clave:
+            if palabra in texto_fila:
+                # Si encontramos coincidencia, devolvemos el contenido de la fila
+                if len(row) >= 2:
+                    return f"{row.iloc[1]}"
+                return f"{' | '.join(row.astype(str))}"
+                
+    return "Lo siento, no encontré información específica sobre tu consulta. ¿Deseas contactar a un asesor?"
 
 # 3. Historial de Chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Mostrar mensajes anteriores
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. Entrada del usuario y generación de respuesta
+# 4. Procesar la pregunta del usuario
 if prompt := st.chat_input("Escribe tu pregunta aquí..."):
     # Guardar y mostrar pregunta del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Crear el prompt con contexto para Gemini
-    system_prompt = f"""
-    Eres un asistente de atención al cliente amable, profesional y servicial.
-    Responde a las preguntas del usuario basándote ÚNICAMENTE en la siguiente información de la empresa:
-
-    --- INFORMACIÓN BASE DE DATOS ---
-    {contexto_csv}
-    ---------------------------------
-
-    Instrucciones:
-    1. Si la respuesta está en la información anterior, responde de forma clara, natural y concisa.
-    2. Si la información NO está disponible en la base de datos, responde amablemente indicando que no tienes esa información disponible y sugiere contactar a un asesor.
-    3. Mantén un tono amigable.
-    """
-
-    # Generar respuesta con la IA
+    # Generar y mostrar respuesta
     with st.chat_message("assistant"):
-        with st.spinner("Pensando..."):
-            try:
-                # Generación directa con el prompt contextualizado
-                prompt_completo = f"{system_prompt}\n\nPregunta del usuario: {prompt}"
-                response = model.generate_content(prompt_completo)
-                
-                respuesta_texto = response.text
-                st.markdown(respuesta_texto)
-                st.session_state.messages.append({"role": "assistant", "content": respuesta_texto})
-            except Exception as e:
-                st.error(f"Ocurrió un error al generar la respuesta: {e}")
+        respuesta = buscar_respuesta(prompt, df_datos)
+        st.markdown(respuesta)
+        st.session_state.messages.append({"role": "assistant", "content": respuesta})
