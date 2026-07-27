@@ -18,26 +18,45 @@ def cargar_datos():
 
 df_datos = cargar_datos()
 
-# 2. Función de búsqueda simple por palabras clave
+# 2. Función de búsqueda mejorada
 def buscar_respuesta(pregunta_usuario, df):
     if df is None or df.empty:
         return "Lo siento, la base de conocimientos no está disponible en este momento."
     
+    # 1. Limpiamos la pregunta de signos y mayúsculas
     pregunta_clean = pregunta_usuario.lower().strip()
-    palabras_clave = [p for p in pregunta_clean.split() if len(p) > 2]
+    for simbolo in ["?", "¿", "!", "¡", ",", ".", ":"]:
+        pregunta_clean = pregunta_clean.replace(simbolo, "")
     
-    # Recorremos cada fila del CSV buscando coincidencias
+    # Saludos rápidos
+    saludos = ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "saludos"]
+    if any(s == palabra for palabra in pregunta_clean.split() for s in saludos):
+        return "¡Hola! 👋 ¿En qué te puedo ayudar hoy? Puedes preguntarme sobre nuestros productos, horarios o servicios."
+
+    palabras_usuario = [p for p in pregunta_clean.split() if len(p) > 2]
+    
+    # 2. Búsqueda por palabras clave en cada fila
+    mejor_coincidencia = None
+    max_coincidencias = 0
+    
     for idx, row in df.iterrows():
-        # Convertimos los valores de la fila a texto de forma segura
+        # Combinamos todo el texto de la fila
         texto_fila = " ".join([str(val) for val in row.values]).lower()
         
-        # Buscamos si alguna palabra clave está en la fila
-        for palabra in palabras_clave:
-            if palabra in texto_fila:
-                # Retornamos la respuesta (columna 2) o la fila junta si solo hay 1 columna
-                if len(row) >= 2:
-                    return str(row.iloc[1])
-                return str(row.iloc[0])
+        # Contamos cuántas palabras del usuario aparecen en la fila
+        coincidencias = sum(1 for palabra in palabras_usuario if palabra in texto_fila)
+        
+        if coincidencias > max_coincidencias:
+            max_coincidencias = coincidencias
+            # Si el CSV tiene 2 o más columnas (ej: Pregunta, Respuesta), devolvemos la respuesta
+            if len(row) >= 2:
+                mejor_coincidencia = str(row.iloc[1])
+            else:
+                mejor_coincidencia = str(row.iloc[0])
+
+    # Si encontramos al menos una coincidencia, la mostramos
+    if mejor_coincidencia and max_coincidencias > 0:
+        return mejor_coincidencia
                 
     return "Lo siento, no encontré información específica sobre tu consulta. ¿Deseas contactar a un asesor?"
 
