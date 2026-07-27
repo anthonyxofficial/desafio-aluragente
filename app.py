@@ -24,20 +24,20 @@ def buscar_respuesta(pregunta_usuario, df):
         return "Lo siento, la base de conocimientos no está disponible en este momento."
     
     pregunta_clean = pregunta_usuario.lower().strip()
+    palabras_clave = [p for p in pregunta_clean.split() if len(p) > 2]
     
     # Recorremos cada fila del CSV buscando coincidencias
     for idx, row in df.iterrows():
-        # Convertimos la fila completa a texto para buscar palabras clave
-        texto_fila = " ".join(row.astype(str)).lower()
+        # Convertimos los valores de la fila a texto de forma segura
+        texto_fila = " ".join([str(val) for val in row.values]).lower()
         
-        # Buscamos palabras de la pregunta dentro de los datos
-        palabras_clave = [p for p in pregunta_clean.split() if len(p) > 3]
+        # Buscamos si alguna palabra clave está en la fila
         for palabra in palabras_clave:
             if palabra in texto_fila:
-                # Si encontramos coincidencia, devolvemos el contenido de la fila
+                # Retornamos la respuesta (columna 2) o la fila junta si solo hay 1 columna
                 if len(row) >= 2:
-                    return f"{row.iloc[1]}"
-                return f"{' | '.join(row.astype(str))}"
+                    return str(row.iloc[1])
+                return str(row.iloc[0])
                 
     return "Lo siento, no encontré información específica sobre tu consulta. ¿Deseas contactar a un asesor?"
 
