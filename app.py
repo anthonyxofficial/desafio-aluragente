@@ -76,11 +76,10 @@ if prompt := st.chat_input("Escribe tu pregunta aquí..."):
     with st.chat_message("assistant"):
         with st.spinner("Pensando..."):
             try:
-                chat = model.start_chat(history=[])
-                # Enviamos las instrucciones del sistema + el historial reciente
-                response = model.generate_content(
-                    f"{system_prompt}\n\nPregunta del usuario: {prompt}"
-                )
+                # Generación directa con el prompt contextualizado
+                prompt_completo = f"{system_prompt}\n\nPregunta del usuario: {prompt}"
+                response = model.generate_content(prompt_completo)
+                
                 respuesta_texto = response.text
                 st.markdown(respuesta_texto)
                 st.session_state.messages.append({"role": "assistant", "content": respuesta_texto})
