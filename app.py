@@ -21,7 +21,12 @@ if not api_key:
 
 # Configurar el cliente de Gemini
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel("gemini-pro")
+
+# Usamos la sintaxis directa actualizada
+try:
+    model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception:
+    model = genai.GenerativeModel("gemini-1.5-pro")
 
 # 2. Cargar la base de datos CSV
 @st.cache_data
