@@ -27,7 +27,8 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 @st.cache_data
 def cargar_datos():
     try:
-        df = pd.read_csv("datos/informacion.csv")
+        # Probamos leerlo ignorando líneas mal formadas o usando sep=None para detectar el separador
+        df = pd.read_csv("datos/informacion.csv", on_bad_lines='skip', engine='python')
         return df.to_string()
     except Exception as e:
         st.error(f"Error al cargar el archivo de datos: {e}")
